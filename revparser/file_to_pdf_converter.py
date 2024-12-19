@@ -14,24 +14,33 @@ class FileToPDFConverter:
     Files are stored temporarily unless explicitly saved to a user-defined folder.
     """
 
-    def __init__(self, input_dir: str, temp_dir: str = None, save_dir: str = None, logger: logging.Logger = None):
+    def __init__(self, input_dir: str = None, file_path: str = None, temp_dir: str = None, save_dir: str = None, logger: logging.Logger = None):
         """
         Args:
             input_dir (str): Path to the input directory with files.
+            file_path (str): Path to a single file to process.
             save_dir (str): Optional path to save the converted PDFs permanently.
             logger (logging.Logger): Logger instance for logging progress.
         """
-        self.input_dir = Path(input_dir)
+        if not (input_dir or file_path):
+            raise ValueError("Either 'input_dir' or 'file_path' must be provided.")
+
+        self.input_dir = Path(input_dir) if input_dir else None
+        self.file_path = Path(file_path) if file_path else None
         self.logger = logger or logging.getLogger(__name__)
         self.temp_dir = Path(temp_dir) if temp_dir else Path(tempfile.mkdtemp())
         self.save_dir = Path(save_dir) if save_dir else None
 
+        # Temporary folder to store converted PDFs
+        self.logger.info(f"Temporary directory created at: {self.temp_dir}")
+
+        # Validate input
+        if self.file_path and not self.file_path.exists():
+            raise FileNotFoundError(f"Input file not found: {self.file_path}")
+        
         # Validate input directory
         if not self.input_dir.exists():
             raise FileNotFoundError(f"Input directory not found: {self.input_dir}")
-
-        # Temporary folder to store converted PDFs
-        self.logger.info(f"Temporary directory created at: {self.temp_dir}")
 
         self.results: List[Tuple[str, int]] = []
 
@@ -51,15 +60,24 @@ class FileToPDFConverter:
             )
         self.logger.info(f"LibreOffice found at: {libreoffice_path}")
         return libreoffice_path
+    
+    def _process_file(self, file: Path):
+        if file.suffix == ".pdf":
+            self.logger.info(f"Skipping PDF: {file}")
+            return
+        elif file.suffix in [".txt", ".docx"]:
+            self._convert_to_pdf(file)
 
     def convert_and_count_pages(self) -> None:
         """
         Converts supported files (txt, docx) to PDF, counts pages, and handles file cleanup.
         """
-        self.logger.info(f"Starting file conversion in: {self.input_dir}")
-        for file in self.input_dir.rglob("*"):
-            if file.is_file() and file.suffix.lower() in [".txt", ".docx"]:
-                self._convert_to_pdf(file)
+        if self.file_path:
+            self._process_file(self.file_path)
+        elif self.input_dir:
+            self.logger.info(f"Starting file conversion in: {self.input_dir}")
+            for file in self.input_dir.rglob("*"):
+                self._process_file(file)
 
         self.logger.info(f"Processing completed: {len(self.results)} files converted.")
 

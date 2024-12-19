@@ -1,16 +1,18 @@
-[project]
+[tool.poetry]
 name = "revparser"
 version = "0.1.0"
-description = "A universal GenAI based file parser that parses complex documents locally"
-authors = [{ name = "Revan Kumar", email = "revan.dhana@gmail.com" }]
-license = { text = "MIT" }
-dependencies = [
-    "PyPDF2>=3.0.0",
-]
-requires-python = ">=3.8"
+description = "A universal GenAI based parser for complex documents of all types"
+authors = ["Revan Kumar Dhanasekaran (revan.dhana@gmail.com)"]
+readme = "README.md"
 
-[project.optional-dependencies]
-dev = ["pytest", "flake8"]
+[tool.poetry.dependencies]
+python = "^3.8"
+pypdf2 = "^3.0.1"
+pypdf = "^5.1.0"
+ollama = "^0.4.4"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.4"
 
 [build-system]
 requires = ["setuptools>=42"]
