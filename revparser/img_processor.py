@@ -1,7 +1,9 @@
 from pathlib import Path
 from typing import List, Dict
 from shutil import rmtree, move
+from datetime import datetime
 import ollama
+import uuid
 import json
 import logging
 import time
@@ -69,7 +71,10 @@ class ImageProcessor:
             pics_folder.mkdir(parents=True, exist_ok=True)
 
             # Move the image to the 'pics' folder
-            new_image_path = pics_folder / image_path.name
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            unique_id = uuid.uuid4().hex[:8]
+
+            new_image_path = pics_folder / f"{image_path.stem}_{timestamp}_{unique_id}{image_path.suffix}"
             move(str(image_path), str(new_image_path))
 
             # Update the image path
