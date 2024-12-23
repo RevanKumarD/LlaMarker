@@ -5,6 +5,7 @@ import tempfile
 from pathlib import Path
 from typing import List, Tuple
 from pypdf import PdfReader
+import matplotlib.pyplot as plt
 import shutil
 
 
@@ -37,9 +38,9 @@ class FileToPDFConverter:
         # Validate input
         if self.file_path and not self.file_path.exists():
             raise FileNotFoundError(f"Input file not found: {self.file_path}")
-        
-        # Validate input directory
-        if not self.input_dir.exists():
+
+        # Validate input directory only if it is provided
+        if self.input_dir and not self.input_dir.exists():
             raise FileNotFoundError(f"Input directory not found: {self.input_dir}")
 
         self.results: List[Tuple[str, int]] = []
@@ -127,6 +128,23 @@ class FileToPDFConverter:
     def get_results(self) -> List[Tuple[str, int]]:
         """Returns the list of converted PDFs and their page counts."""
         return self.results
+    
+    def plot_page_counts(self) -> None:
+        """Plots a bar chart showing the number of pages across all processed files."""
+        if not self.results:
+            self.logger.warning("No files to plot. Please run `convert_and_count_pages` first.")
+            return
+
+        file_names, page_counts = zip(*[(Path(f).name, p) for f, p in self.results])
+
+        plt.figure(figsize=(10, 6))
+        plt.bar(file_names, page_counts, color="skyblue")
+        plt.xlabel("Files", fontsize=12)
+        plt.ylabel("Number of Pages", fontsize=12)
+        plt.title("Page Count Across Files", fontsize=14)
+        plt.xticks(rotation=45, ha="right", fontsize=10)
+        plt.tight_layout()
+        # plt.show()
 
 
 if __name__ == "__main__":
@@ -138,5 +156,5 @@ if __name__ == "__main__":
 
     logger = logging.getLogger("RevParser")
 
-    convertor = FileToPDFConverter(input_dir="/home/revdha/PycharmProjects/rag_app/database", logger=logger)
+    convertor = FileToPDFConverter(file_path="/home/revdha/PycharmProjects/rag_app/database/PB-7.1.0-1_Beschaffung.docx", logger=logger)
     convertor.convert_and_count_pages()

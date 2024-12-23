@@ -44,7 +44,9 @@ class ImageProcessor:
         """
         Processes all PNG images in the folder by querying the Ollama model.
         """
-        image_files = list(self.folder_path.glob("*.png"))
+        image_files = list(self.folder_path.glob("*.png")) + \
+              list(self.folder_path.glob("*.jpg")) + \
+              list(self.folder_path.glob("*.jpeg"))
 
         for image_file in image_files:
             self.logger.info(f"Processing image: {image_file.name}")
@@ -395,8 +397,15 @@ if __name__ == "__main__":
     parser.add_argument("--model", type=str, default='llama3.2-vision', help="Ollama model to query.")
     args = parser.parse_args()
 
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format="%(asctime)s - %(levelname)s - %(message)s",
+    )
+
+    logger = logging.getLogger("RevParser")
+
     # Create an instance of ImageProcessor
-    processor = ImageProcessor(args.folder, args.model)
+    processor = ImageProcessor(args.folder, args.model, logger)
 
     # Process images
     processor.process_images()
