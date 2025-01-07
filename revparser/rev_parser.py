@@ -30,6 +30,7 @@ class RevParser:
         self.logger = logger or logging.getLogger(__name__)
         self.temp_dir = Path(temp_dir) if temp_dir else Path(tempfile.mkdtemp())
         self.output_dir = output_dir
+        self.save_dir = None
         if not marker_path:
             self.marker_path = shutil.which("marker")
             if not self.marker_path:

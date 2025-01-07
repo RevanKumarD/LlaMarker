@@ -2,7 +2,8 @@ from pathlib import Path
 from typing import List, Dict
 from shutil import rmtree, move
 from datetime import datetime
-import ollama
+from pydantic import BaseModel
+from ollama import Options, chat
 import uuid
 import json
 import logging
@@ -27,6 +28,8 @@ class ImageProcessor:
         self.folder_path = Path(folder_path)
         self.model = model
         self.results: List[Dict[str, str]] = []
+        self.max_retries = 3
+        self.img_language = "English"
 
         # Use provided logger or set up a default logger
         self.logger = logger or logging.getLogger(__name__)
@@ -47,8 +50,8 @@ class ImageProcessor:
         Processes all PNG images in the folder by querying the Ollama model.
         """
         image_files = list(self.folder_path.glob("*.png")) + \
-              list(self.folder_path.glob("*.jpg")) + \
-              list(self.folder_path.glob("*.jpeg"))
+                      list(self.folder_path.glob("*.jpg")) + \
+                      list(self.folder_path.glob("*.jpeg"))
 
         for image_file in image_files:
             self.logger.info(f"Processing image: {image_file.name}")
@@ -66,90 +69,53 @@ class ImageProcessor:
             Dict[str, str]: Processed results.
         """
         if not self.is_logo_image(image_path):
-            # Create 'pics' folder in the parent directory
-            pics_folder = self.folder_path.parent / "pics"
-            pics_folder.mkdir(parents=True, exist_ok=True)
-
-            # Move the image to the 'pics' folder
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            unique_id = uuid.uuid4().hex[:8]
-
-            new_image_path = pics_folder / f"{image_path.stem}_{timestamp}_{unique_id}{image_path.suffix}"
-            move(str(image_path), str(new_image_path))
-
-            # Update the image path
-            image_path = new_image_path
-
+            image_path = self.move_image_to_pics_folder(image_path)
             responses = self.extract_information_multiple_times(image_path)
             best_response_index = self.determine_best_response(responses, image_path)
             best_response = responses[best_response_index - 1]
             translated_response = self.translate_response_to_original_language(best_response, image_path)
         else:
             self.logger.info(f"The image {image_path.name} is classified as a company logo. No further processing required.")
-            
-            return {
-                "image": image_path.name,
-                "image_path": str(image_path),
-                "is_logo": True,
-                "contains_info": False,
-                "extracted_info": "N/A"
-            }
+            return self.create_result(image_path, is_logo=True, contains_info=False, extracted_info="N/A")
 
-        return {
-            "image": image_path.name,
-            "image_path": str(image_path),
-            "is_logo": False,
-            "contains_info": True,
-            "extracted_info": translated_response
-        }
+        return self.create_result(image_path, is_logo=False, contains_info=True, extracted_info=translated_response)
 
+    # Logo Classifier Agent
     def is_logo_image(self, img_path: str) -> bool:
-        role_1 = (
-            "You are an image classifier specialized in determining whether an image is a logo or doesn't contain any important info or contains just few text. Your task is to classify the given image and respond with a simple 'Yes' or 'No'. "
-            "Provide only the answer and strictly adhere to the output format specified below. No additional text, explanations, or extra information should be provided.\n\n"
-            "Output Format (in JSON):\n"
-            "{\n"
-            "  'is_logo': 'Yes' or 'No'\n"
-            "}\n\n"
-            "Guidelines:\n"
-            "- Respond only with 'Yes' or 'No' based on whether the image is a logo or doesnt contain any important info or contains just few text.\n"
-            "- Use the exact output format shown above, including the key 'is_logo' and either 'Yes' or 'No' as the value.\n"
-            "- Do not add any extra words, comments, or explanations outside of the given format."
-        )
+        instruction_set = "You are an image classifier specialized in determining whether an image is a logo or not. Classify it as logo if it doesn't contain any important info or contains just few text."
 
-        max_retries = 3
-        for attempt in range(max_retries):
-            try:
-                # Call the vision agent with the role and image path
-                is_logo_response = self.ollama_vision_agent(role_1, img_path)
+        prompt = "Please classify the image as a logo or not."
+        prompt += "\nRespond in JSON format as follows:\n"
+        prompt += "{ 'is_logo': True or False }"
 
-                # Validate and parse the JSON response
-                is_logo_json = json.loads(is_logo_response)
+        # Define the schema for the response
+        class logo_agent_schema(BaseModel):
+            is_logo: bool
 
-                # Ensure the response contains the required key
-                if "is_logo" in is_logo_json and is_logo_json["is_logo"] in ["Yes", "No"]:
-                    return is_logo_json["is_logo"] == "Yes"
-                else:
-                    raise ValueError("Invalid JSON structure or missing 'is_logo' key.")
-            
-            except json.JSONDecodeError:
-                self.logger.error(f"Attempt {attempt + 1}: Response is not valid JSON: {is_logo_response}")
-            except Exception as e:
-                self.logger.error(f"Attempt {attempt + 1}: Error during classification: {e}")
-            
-            # Retry after a short delay if an error occurs
-            if attempt < max_retries - 1:
-                time.sleep(1)
-            else:
-                self.logger.error("Image classification failed after multiple attempts. Hence classifying it as logo.")
-                return True
+        llm_role = "Logo Classifier"
+        response_key = "is_logo"
 
-        # Default return in case all retries fail (though this line is unlikely to be reached due to raise)
-        return False
+        llm_schema = logo_agent_schema.model_json_schema()
 
-    def extract_information_multiple_times(self, img_path: str, attempts: int = 3) -> List[str]:
+        return self.retry_ollama_vision_agent(instruction_set, prompt, llm_role, response_key, img_path, llm_schema)
+
+    #  Information Extractor Agent
+    def extract_information_multiple_times(self, img_path: str, max_responses: int = 3) -> List[str]:
+        """
+        Extracts information from an image multiple times to ensure accuracy.
+
+        Args:
+            img_path (str): Path to the image file.
+            max_responses (int): Maximum number of responses to collect.
+
+        Returns:
+            List[str]: Extracted information from the image.
+        """
+
+        instruction_set = """
         
-        role_2 = """You are a precise visual content analyzer specialized in extracting information from images. Your task is to methodically identify, analyze, and structure information from images containing text, tables, graphs, and/or flowcharts.
+        You are a precise visual content analyzer specialized in extracting information from images. 
+        Your task is to methodically identify, analyze, and structure information from images containing text, tables, graphs, and/or flowcharts.
 
         # Core Responsibilities
         1. Analyze the image thoroughly and identify all present elements
@@ -230,114 +196,101 @@ class ImageProcessor:
         - Note specific issue (e.g., "Bottom right corner obscured")
         - Do not attempt to reconstruct unclear elements
 
-        Remember: Accuracy and precision are paramount. Output only what you can see with absolute certainty."""
+        Remember: Accuracy and precision are paramount. Output only what you can see with absolute certainty.
+        
+        Output Format (strictly):
+        {
+            "Detected Elements": "[List only found elements: Text, Table, Graph, Flowchart]",
+            "Language": "[Primary language detected]",
+            "Text Content": "[Direct transcription of visible text, preserving formatting]",
+        }
 
+        """
+
+        prompt = "Please extract information from the image."
+        prompt += "\nRespond in JSON format as follows:\n"
+        prompt += """{
+            "Detected Elements": "[List only found elements: Text, Table, Graph, Flowchart]",
+            "Language": "[Primary language detected]",
+            "Text Content": "[Detailed overview of the image]",
+        }"""
+
+        # Define the schema for the response
+        class information_extractor_schema(BaseModel):
+            Detected_Elements: List[str]
+            Language: str
+            Text_Content: str
+
+        llm_role = "Information Extractor"
+        response_key = "Text Content"
+        llm_schema = information_extractor_schema.model_json_schema()
 
         results = []
     
-        for response_index in range(3):  # Collect 3 responses
-            for attempt in range(attempts):
-                try:
-                    # Call the vision agent
-                    result = self.ollama_vision_agent(role_2, img_path)
-                    results.append(result.strip())
-                    break                        
-                except Exception as e:
-                    self.logger.error(f"Attempt {attempt + 1} for Response {response_index + 1}: Failed with error: {e}")
-                    if attempt == attempts - 1:
-                        error_msg = f"Failed to generate Response {response_index + 1} after {attempts} attempts: {e}"
-                        results.append(error_msg)
-                        self.logger.error(error_msg)
-                
-                time.sleep(1)  # Delay before retrying
+        for response_index in range(max_responses):  # Collect 3 responses
+            logging.info(f"Extracting information from image: {img_path} (Collection {response_index + 1})")
+            result = self.retry_ollama_vision_agent(instruction_set, prompt, llm_role, response_key, img_path, llm_schema)
+            results.append(result)
         
         return results
 
-
+    # QA Evaluator Agent
     def determine_best_response(self, responses: List[str], img_path: str) -> int:
+        """
+        Determines the best response among multiple extracted information responses.
+        
+        Args:
+            responses (List[str]): List of extracted information responses.
+            img_path (str): Path to the image file.
+        
+        Returns:
+            int: Index of the best response in the list.
+        """
 
         concatenated_responses = "\n\n".join([f"Response {i+1}:\n{resp}" for i, resp in enumerate(responses)])
-        role_3 = (
+
+        instruction_set = (
             "You are a QA evaluator. I have three responses for the same task, and your job is to determine which one is the best. "
             "The responses might vary slightly, but you must select the most complete and accurate one based on the content extracted from the image. "
-            f"Responses:\n{concatenated_responses}\n\n"
-            "Respond with just the number: 1, 2, or 3. No additional text, explanation, or formatting is needed.\n"
-            "Output Format (strictly):\n"
-            "The correct answer is: [1, 2, or 3]"
-            "Example Response : "
-            "The correct answer is: 2"
         )
 
-        max_retries = 3
-        for attempt in range(max_retries):
-            try:
-                # Call the vision agent with the role and image path
-                response = self.ollama_vision_agent(role_3, img_path)
+        prompt = "Please select the best response from the three provided."
+        prompt += f"\n\n{concatenated_responses}"
+        prompt += "\nRespond in JSON format as follows:\n"
+        prompt += "{ 'best_response': 1 or 2 or 3 }"
 
-                # Parse and validate the response
-                if "The correct answer is:" in response:
-                    answer = int(response.split("The correct answer is:")[1].strip()[0])
+        # Define the schema for the response
+        class qa_evaluator_schema(BaseModel):
+            best_response: int
 
-                    if answer in [1, 2, 3]:
-                        return answer
-                    else:
-                        raise ValueError("Response contains an invalid number.")
-                else:
-                    raise ValueError("Response does not follow the required format.")
+        llm_role = "QA Evaluator"
+        response_key = "best_response"
+        llm_schema = qa_evaluator_schema.model_json_schema()
 
-            except Exception as e:
-                self.logger.error(f"Attempt {attempt + 1}: QA evaluator failed with error: {e}")
+        return self.retry_ollama_vision_agent(instruction_set, prompt, llm_role, response_key, img_path, llm_schema, [1, 2, 3])
             
-            # Retry after a short delay if an error occurs
-            if attempt < max_retries - 1:
-                time.sleep(1)
-            else:
-                raise RuntimeError("QA evaluation failed after multiple attempts.")
-            
-
+    # Translator Agent
     def translate_response_to_original_language(self, response: str, img_path: str) -> str:
-        language = "German"
-        role_4 = (
-            f"You are a translator. Your job is to translate the text into {language}. "
+        
+        instruction_set = (
+            f"You are a translator. Your job is to translate the text into {self.img_language}. "
             "Provide only the translated text with no additional comments, explanations, or formatting.\n\n"
-            "Text to be translated:\n"
-            f"{response}\n\n"
-            "Output Format:\n"
-            "[Translated text in the target language]"
         )
 
-        max_retries = 3
-        for attempt in range(max_retries):
-            try:
-                # Call the translation agent
-                translated_response = self.ollama_vision_agent(role_4, img_path)
+        prompt = f"Please translate the text into {self.img_language}."
+        prompt += f"\n{response}\n\n"
+        prompt += "\nRespond in JSON format as follows:\n"
+        prompt += "{ 'translated_text': '[Translated text in the target language]' }"
 
-                # Perform basic validation: ensure no extra text or formatting
-                if translated_response.strip():
-                    return translated_response.strip()
-                else:
-                    raise ValueError("Empty or invalid translation response.")
+        # Define the schema for the response
+        class translator_schema(BaseModel):
+            translated_text: str
 
-            except Exception as e:
-                self.logger.error(f"Attempt {attempt + 1}: Translation failed with error: {e}")
-            
-            # Retry after a short delay if an error occurs
-            if attempt < max_retries - 1:
-                time.sleep(1)
-            else:
-                raise RuntimeError("Translation failed after multiple attempts.")
+        llm_role = "Translator"
+        response_key = "translated_text"
+        llm_schema = translator_schema.model_json_schema()
 
-
-    def ollama_vision_agent(self, role: str, img_path: str) -> str:
-        response = ollama.chat(
-            model=self.model,
-            messages=[{
-                'role': 'user',
-                'content': role,
-                'images': [img_path]
-            }]
-        )
-        return response['message']['content']
+        return self.retry_ollama_vision_agent(instruction_set, prompt, llm_role, response_key, img_path, llm_schema)
 
     def update_markdown(self) -> None:
         """
@@ -391,6 +344,127 @@ class ImageProcessor:
             self.logger.info(f"  - Is Logo: {result['is_logo']}")
             self.logger.info(f"  - Contains Info: {result['contains_info']}")
             self.logger.info(f"  - Extracted Info: {result['extracted_info']}")
+
+    def move_image_to_pics_folder(self, image_path: Path) -> Path:
+        """
+        Moves the image to the 'pics' folder and returns the new image path.
+
+        Args:
+            image_path (Path): Path to the image file.
+
+        Returns:
+            Path: New image path.
+        """
+        pics_folder = self.folder_path.parent / "pics"
+        pics_folder.mkdir(parents=True, exist_ok=True)
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        unique_id = uuid.uuid4().hex[:8]
+
+        new_image_path = pics_folder / f"{image_path.stem}_{timestamp}_{unique_id}{image_path.suffix}"
+        move(str(image_path), str(new_image_path))
+
+        return new_image_path
+
+    def create_result(self, image_path: Path, is_logo: bool, contains_info: bool, extracted_info: str) -> Dict[str, str]:
+        """
+        Creates a result dictionary for the processed image.
+
+        Args:
+            image_path (Path): Path to the image file.
+            is_logo (bool): Whether the image is a logo.
+            contains_info (bool): Whether the image contains information.
+            extracted_info (str): Extracted information from the image.
+
+        Returns:
+            Dict[str, str]: Result dictionary.
+        """
+        return {
+            "image": image_path.name,
+            "image_path": str(image_path),
+            "is_logo": is_logo,
+            "contains_info": contains_info,
+            "extracted_info": extracted_info
+        }
+    
+    def ollama_vision_agent(self, instruction_set: str, user_prompt: str, img_path: str, llm_schema: str) -> str:
+        """
+        Calls the Ollama vision agent to process an image.
+        
+        Args:
+            instruction_set (str): Instructions for the agent.
+            user_prompt (str): User prompt for the agent.
+            img_path (str): Path to the image file.
+            llm_schema (str): JSON schema for the response.
+            
+        Returns:
+            str: Response from the agent.
+        """
+        response = chat(
+            model=self.model,
+            messages=[
+                {
+                    'role': 'system',
+                    'content': instruction_set,
+                    'images': [img_path]
+                },
+
+                {
+                    'role': 'user',
+                    'content': user_prompt,
+                    'images': [img_path]
+                }
+            ],
+            format='json',
+        )
+        print(response["message"]["content"])
+        return response['message']['content']
+    
+    
+    def retry_ollama_vision_agent(self, instruction_set: str, user_prompt: str, llm_role: str, response_key: str, img_path: str, llm_schema: str, valid_values: List = []) -> str:
+        """
+        Retries calling the Ollama vision agent until a valid response is received.
+
+        Args:
+            instruction_set (str): Instructions for the agent.
+            user_prompt (str): User prompt for the agent.
+            llm_role (str): Name of the agent.
+            response_key (str): Key to extract from the response.
+            img_path (str): Path to the image file.
+            llm_schema (str): JSON schema for the response.
+
+        Returns:
+            str: Valid value for the key.
+        """
+        for attempt in range(self.max_retries):
+            try:
+                response = self.ollama_vision_agent(instruction_set, user_prompt, img_path, llm_schema)
+                response_json = json.loads(response)
+
+                if response_key in response_json:
+                    if valid_values:
+                        if response_json[response_key] in valid_values:
+                            return response_json[response_key]
+                        else:
+                            raise ValueError(f"Agent {llm_role} : Invalid response value: {response_json[response_key]}")
+                    else:
+                        if llm_role == "Information Extractor":
+                            self.img_language = list(response_json['Language'])[0]
+                        return response_json[response_key]
+                else:
+                    raise ValueError(f"Agent {llm_role} : Invalid JSON structure or missing '{response_key}' key.")
+            except json.JSONDecodeError:
+                self.logger.error(f"Agent {llm_role} : Attempt {attempt + 1}: Response is not valid JSON: {response}")
+            except Exception as e:
+                self.logger.error(f"Agent {llm_role} : Attempt {attempt + 1}: Error during classification: {e}")
+
+            if attempt < self.max_retries - 1:
+                time.sleep(1)
+            else:
+                self.logger.error(f"Operation failed after {self.max_retries} attempts.")
+                raise RuntimeError(f"Operation failed after {self.max_retries} attempts.")
+
+        return ""
 
 
 if __name__ == "__main__":
