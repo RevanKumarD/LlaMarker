@@ -11,14 +11,14 @@ import tempfile
 import shutil
 
 
-class RevParser:
+class LlaMarker:
     """
     A class to handle document parsing, conversion, and analysis operations.
     """
 
     def __init__(self, input_dir: str = None, file_path: str = None, temp_dir: str = None, save_pdfs = False, output_dir: str = None, logger: logging.Logger = None, marker_path: str = None):
         """
-        Initialize RevParser with a root directory for processing.
+        Initialize LlaMarker with a root directory for processing.
 
         Args:
             input_dir (str): Path to the input directory with files.
@@ -71,12 +71,12 @@ class RevParser:
         self.file_converter = FileToPDFConverter(input_dir=self.input_dir, file_path=self.file_path, temp_dir=self.temp_dir, save_dir=self.save_dir, logger=self.logger)
 
     def setup_logging(self):
-        """Configure logging for the RevParser operations."""
+        """Configure logging for the LlaMarker operations."""
         log_dir = Path("logs")
         log_dir.mkdir(exist_ok=True)
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        log_file = log_dir / f"rev_parser_{timestamp}.log"
+        log_file = log_dir / f"llamarker_{timestamp}.log"
 
         logging.basicConfig(
             level=logging.INFO,
@@ -207,9 +207,9 @@ class RevParser:
 
 
 def main():
-    """Main entry point for the RevParser application."""
+    """Main entry point for the LlaMarker application."""
     parser = argparse.ArgumentParser(
-        description="Process and analyze documents with RevParser."
+        description="Process and analyze documents with LlaMarker."
     )
     parser.add_argument(
         "--directory", type=str, help="Root directory containing documents to process", default=None
@@ -248,7 +248,7 @@ def main():
     args = parser.parse_args()
 
     try:
-        rev_parser = RevParser(
+        llamarker = LlaMarker(
             input_dir=args.directory,
             file_path=args.file,
             temp_dir=args.temp_dir,
@@ -258,22 +258,22 @@ def main():
         )
 
         # Step 1: Process documents (convert and count pages)
-        rev_parser.process_documents()
+        llamarker.process_documents()
 
         # Step 2: Parse documents with Marker
-        rev_parser.parse_with_marker()
+        llamarker.parse_with_marker()
 
         # Step 3: Enriched Parsed files
-        rev_parser.process_subdirectories(model=args.model)
+        llamarker.process_subdirectories(model=args.model)
 
         # Step 4: Print summary
         print("\nDocument Processing Summary:")
         print("-" * 30)
-        for file_name, page_count in rev_parser.generate_summary():
+        for file_name, page_count in llamarker.generate_summary():
             print(f"{file_name}: {page_count} pages")
 
         # Step 5: Generate analysis plots
-        rev_parser.plot_analysis(rev_parser.parent_dir)
+        llamarker.plot_analysis(llamarker.parent_dir)
 
         print("\nProcessing completed successfully!")
 

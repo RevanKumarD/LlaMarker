@@ -1,13 +1,13 @@
 import pytest
 import logging
 from pathlib import Path
-from revparser.file_to_pdf_converter import FileToPDFConverter
+from llamarker.file_to_pdf_converter import FileToPDFConverter
 from unittest.mock import patch, MagicMock
 
 @pytest.fixture(scope="session")
 def logger():
     """Fixture to configure and return a logger for testing."""
-    logger = logging.getLogger("RevParserTest")
+    logger = logging.getLogger("LlaMarkerTest")
     logger.setLevel(logging.DEBUG)
     handler = logging.StreamHandler()
     formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
@@ -63,7 +63,7 @@ def test_convert_single_txt_file(mock_subprocess, mock_libreoffice, temp_file_tx
     converter = FileToPDFConverter(file_path=str(temp_file_txt), save_dir=str(temp_save_dir), logger=logger)
 
     # Mock PDF page counting
-    with patch("revparser.file_to_pdf_converter.PdfReader") as mock_pdf_reader:
+    with patch("llamarker.file_to_pdf_converter.PdfReader") as mock_pdf_reader:
         mock_reader_instance = MagicMock()
         mock_reader_instance.pages = [1]  # Simulate a 1-page PDF
         mock_pdf_reader.return_value = mock_reader_instance
@@ -108,7 +108,7 @@ def test_convert_directory_with_mixed_files(mock_subprocess, mock_libreoffice, t
     converter = FileToPDFConverter(input_dir=str(input_dir), save_dir=str(temp_save_dir), logger=logger)
 
     # Mock PDF page counting
-    with patch("revparser.file_to_pdf_converter.PdfReader") as mock_pdf_reader:
+    with patch("llamarker.file_to_pdf_converter.PdfReader") as mock_pdf_reader:
         mock_reader_instance = MagicMock()
         mock_reader_instance.pages = [1]  # Simulate a 1-page PDF
         mock_pdf_reader.return_value = mock_reader_instance
@@ -135,7 +135,7 @@ def test_convert_and_count_pages(mock_subprocess, mock_libreoffice, temp_input_d
     converter = FileToPDFConverter(input_dir=temp_input_dir, temp_dir=temp_save_dir, logger=logger)
 
     # Mock the PDF counting to avoid actual file handling
-    with patch("revparser.file_to_pdf_converter.PdfReader") as mock_pdf_reader:
+    with patch("llamarker.file_to_pdf_converter.PdfReader") as mock_pdf_reader:
         mock_reader_instance = MagicMock()
         mock_reader_instance.pages = [1, 2]  # Simulate a 2-page PDF
         mock_pdf_reader.return_value = mock_reader_instance

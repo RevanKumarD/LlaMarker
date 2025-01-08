@@ -1,21 +1,27 @@
 [tool.poetry]
-name = "revparser"
+name = "LlaMarker"
 version = "0.1.0"
-description = "A universal GenAI based parser for complex documents of all types"
+description = "A universal GenAI based local parser for complex documents of all types"
 authors = ["Revan Kumar Dhanasekaran (revan.dhana@gmail.com)"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.8"
+python = ">=3.10 <4.0"
+streamlit = "^1.41.1"
 pypdf2 = "^3.0.1"
 pypdf = "^5.1.0"
 ollama = "^0.4.4"
+langchain = "^0.3.13"
+langchain-community = "^0.3.13"
+langchain-ollama = "^0.2.2"
+pydantic = "^2.10.4"
+matplotlib = "<3.10.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.4"
 
 [tool.poetry.scripts]
-post_install_marker = "revparser.utils.post_install:install_marker"
+post_install_marker = "llamarker.utils.post_install:install_marker"
 
 [build-system]
 requires = ["setuptools>=42"]

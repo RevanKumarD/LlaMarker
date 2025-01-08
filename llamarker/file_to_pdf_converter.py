@@ -1,4 +1,4 @@
-# revparser/file_to_pdf_converter.py
+# llamarker/file_to_pdf_converter.py
 import logging
 import subprocess
 import tempfile
@@ -154,7 +154,7 @@ if __name__ == "__main__":
         format="%(asctime)s - %(levelname)s - %(message)s",
     )
 
-    logger = logging.getLogger("RevParser")
+    logger = logging.getLogger("LlaMarker")
 
     convertor = FileToPDFConverter(file_path="/home/revdha/PycharmProjects/rag_app/database/PB-7.1.0-1_Beschaffung.docx", logger=logger)
     convertor.convert_and_count_pages()
