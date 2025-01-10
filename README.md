@@ -1,4 +1,6 @@
-# ![LlaMarker Logo](llamarker/assets/Llamarker_logo.png)
+<p align="center">
+  <img src="llamarker/assets/Llamarker_logo.png" alt="LlaMarker Logo">
+</p>
 
 # Llamarker
 
