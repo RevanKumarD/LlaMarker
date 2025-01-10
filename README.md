@@ -1,113 +1,106 @@
-# RevParser: Universal File Parser Locally
+# ![LlaMarker Logo](llamarker/assets/Llamarker_logo.png) LlaMarker
 
-RevParser is a Python package that efficiently parses the structured information from any complex docs of any type. It uses **LibreOffice** for accurate PDF conversion, ensuring layout preservation. Temporary file handling ensures a clean workflow.
+**LlaMarker** is a comprehensive Python package designed for universal parsing and document conversion. It provides end-to-end capabilities for converting files into PDFs, extracting text and structured content (including images, tables, graphs, and flowcharts), and converting these into clean Markdown files. Its primary focus is on maintaining accuracy and supporting multilingual content.
 
 ---
 
 ## Features
-- **File Conversion**: Convert `.txt` and `.docx` files to PDFs.
-- **Image Processing**: Analyze images and extract structured content.
-- **Temporary File Management**: Store files temporarily unless explicitly saved.
-- **Cross-Platform**: Works on both Linux and Windows.
+
+- **Document Conversion**: Converts `.txt`, `.docx`, and other supported file types into PDF using LibreOffice.
+- **Page Counting**: Automatically counts pages in PDFs using PyPDF2.
+- **Image Processing**: Analyzes images to distinguish logos from content-rich images, extracts relevant information, and updates the corresponding Markdown file.
+- **Markdown Parsing**: Uses Marker to generate clean, structured Markdown files from parsed PDFs.
+- **Multilingual Support**: Maintains the original language of the content during extraction.
+- **Data Visualization**: Generates analysis plots based on document page counts.
 
 ---
 
-## Pre-requisites
+## How It Works
 
-Before using this package, ensure **LibreOffice** is installed:
+### 1. Document Processing
+- Converts text-based files into PDFs.
+- Copies existing PDFs to the output directory while maintaining the folder structure.
+- Counts pages in all processed PDFs.
 
-- **Linux**:
-  Install LibreOffice via terminal:
-  ```bash
-  sudo apt update
-  sudo apt install libreoffice
-  ```
+### 2. Parsing with Marker
+- Uses Marker to extract content from PDFs and generate Markdown files.
+- Supports parallel processing with multiple workers for efficient parsing.
 
-- **Windows**:
-  Download and install LibreOffice from the official website:
-  [LibreOffice Download](https://www.libreoffice.org/download/)
-
-To verify installation:
-```bash
-libreoffice --version   # For Linux
-soffice --version       # For Windows
-```
+### 3. Image Analysis
+- Identifies logos and content images using the Ollama vision model.
+- Extracts information from content-rich images and updates the corresponding Markdown file.
+- Translates extracted information to the original language, ensuring content integrity.
 
 ---
 
 ## Installation
 
-Install RevParser using `pip`:
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/RevanKumarD/LlaMarker.git
+   cd LlaMarker
+   ```
 
-```bash
-pip install revparser
-```
+2. Install dependencies using `pip`:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. Ensure LibreOffice is installed for document conversion:
+   ```bash
+   sudo apt install libreoffice
+   ```
 
 ---
 
 ## Usage
 
-### 1. File Conversion
-
-Convert `.txt` and `.docx` files in a directory to PDFs:
-
-```python
-from revparser.file_to_pdf_converter import FileToPDFConverter
-
-# Initialize the converter
-converter = FileToPDFConverter(input_dir="path/to/input", save_dir="path/to/save")
-
-# Convert files and get results
-try:
-    converter.convert_and_count_pages()
-    for pdf, pages in converter.get_results():
-        print(f"{pdf} - {pages} pages")
-finally:
-    converter.cleanup()
-```
-
-- **`input_dir`**: Directory containing files to process.
-- **`save_dir`** (optional): Directory to save PDFs permanently.
-
----
-
-### 2. Image Processing
-
-Analyze images and extract content:
-
-```python
-from revparser.img_processor import ImageProcessor
-
-# Initialize the image processor
-processor = ImageProcessor(folder_path="path/to/images")
-processor.process_images()
-```
-
----
-
-## Requirements
-
-- Python 3.8 or later
-- PyPDF2
-- LibreOffice (pre-installed)
-
-Install required dependencies:
-
 ```bash
-pip install -r requirements.txt
+python RevParser.py <directory_path> --model llama3.2-vision
 ```
+
+### Arguments:
+- `<directory_path>`: Root directory containing documents to process.
+- `--model`: Ollama model for image processing (default: `llama3.2-vision`).
+
+---
+
+## Example
+
+1. **Converting Documents**:
+   ```bash
+   python RevParser.py /path/to/documents
+   ```
+
+2. **Viewing Results**:
+   Processed PDFs and Markdown files will be available in the `OutDir` and `ParsedFiles` directories, respectively.
+
+---
+
+## Output Structure
+
+- **OutDir**: Contains processed PDF files.
+- **ParsedFiles**: Contains Markdown files generated from parsed PDFs.
+- **logs**: Stores log files for each run, helping track processing status and errors.
 
 ---
 
 ## Contributing
 
-Contributions are welcome! Follow these steps:
-1. Fork the repository.
-2. Create a new branch for your feature.
-3. Submit a pull request.
+Contributions are welcome! Feel free to open an issue or submit a pull request.
 
 ---
 
 ## License
 
 This project is licensed under the MIT License.
+
+---
+
+## Acknowledgments
+
+Special thanks to the contributors and the open-source community for their invaluable support.
+
+---
+
+Let me know if you want further adjustments, including the specific path for the logo!

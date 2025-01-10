@@ -4,3 +4,8 @@ __pycache__/
 dist/
 build/
 .venv/
+OutDir/
+logs/
+
+git push -u origin mastergit remote add origin https://github.com/RevanKumarD/LlaMarker.git
+git push -u origin master
