@@ -11,7 +11,7 @@ import shutil
 
 class FileToPDFConverter:
     """
-    Converts supported files (txt, docx) to PDFs using LibreOffice.
+    Converts supported files (txt, docx, pdf, rtf, odt, xls, xlsx, csv, ods, ppt, pptx, odp) to PDFs using LibreOffice.
     Files are stored temporarily unless explicitly saved to a user-defined folder.
     """
 
@@ -45,6 +45,9 @@ class FileToPDFConverter:
 
         self.results: List[Tuple[str, int]] = []
 
+        # Creates pdf directory and cleans if needed
+        self.clean_save_dir()
+
         # Validate LibreOffice installation
         self.libreoffice_path = self._validate_libreoffice()
 
@@ -63,16 +66,14 @@ class FileToPDFConverter:
         return libreoffice_path
     
     def _process_file(self, file: Path):
-        if file.suffix == ".pdf":
-            self.logger.info(f"Skipping PDF: {file}")
-            return
-        elif file.suffix in [".txt", ".docx"]:
+        if file.suffix in [".txt", ".docx", ".pdf", ".xls", ".xlsx", ".ppt", ".pptx", ".csv", ".rtf", ".odt", ".ods", ".odp"]:
             self._convert_to_pdf(file)
 
     def convert_and_count_pages(self) -> None:
         """
-        Converts supported files (txt, docx) to PDF, counts pages, and handles file cleanup.
+        Converts supported files (txt, docx, pdf, rtf, odt, xls, xlsx, csv, ods, ppt, pptx, odp) to PDF, counts pages, and handles file cleanup.
         """
+
         if self.file_path:
             self._process_file(self.file_path)
         elif self.input_dir:
@@ -92,7 +93,6 @@ class FileToPDFConverter:
             "--outdir", str(output_file.parent),
             str(input_file)
         ]
-
         try:
             subprocess.run(command, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             pages = self._count_pdf_pages(output_file)
@@ -112,10 +112,20 @@ class FileToPDFConverter:
 
     def _save_to_user_directory(self, temp_file: Path):
         """Saves the converted PDF to the user-specified directory."""
-        self.save_dir.mkdir(parents=True, exist_ok=True)
         dest_file = self.save_dir / temp_file.name
         shutil.copy2(temp_file, dest_file)
         self.logger.info(f"Saved PDF to: {dest_file}")
+
+    def clean_save_dir(self):
+        if self.save_dir.exists():
+            self.logger.info(f"Cleaning existing PDFFiles directory: {self.save_dir}")
+            for item in self.save_dir.iterdir():
+                if item.is_dir():
+                    shutil.rmtree(item)
+                else:
+                    item.unlink()
+        else:
+            self.save_dir.mkdir(exist_ok=True)
 
     def cleanup(self):
         """Cleans up the temporary directory."""

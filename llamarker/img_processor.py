@@ -8,6 +8,7 @@ import uuid
 import json
 import logging
 import time
+import os
 
 
 class ImageProcessor:
@@ -16,20 +17,25 @@ class ImageProcessor:
     and extracts relevant details into a Markdown file.
     """
 
-    def __init__(self, folder_path: str, model: str = 'llama3.2-vision', logger: logging.Logger = None):
+    def __init__(self, folder_path: str, model: str = 'llama3.2-vision', logger: logging.Logger = None, translator: bool = False, qa_evaluator:bool = True):
         """
         Initializes the ImageProcessor.
 
         Args:
             folder_path (str): Path to the folder containing images and a Markdown file.
             model (str): Name of the Ollama model to use.
-            logger (logging.Logger): Logger instance to use for logging.
+            logger (logging.Logger, optional): Logger instance to use for logging. Defaults to None.
+            translator (bool, optional): Whether to enable translation of extracted content. Defaults to False.
+            qa_evaluator (bool, optional): Whether to enable QA evaluation for selecting the best response during image processing. Defaults to True.
         """
+
         self.folder_path = Path(folder_path)
         self.model = model
         self.results: List[Dict[str, str]] = []
         self.max_retries = 3
         self.img_language = "English"
+        self.translator = translator
+        self.qa_evaluator = qa_evaluator
 
         # Use provided logger or set up a default logger
         self.logger = logger or logging.getLogger(__name__)
@@ -43,6 +49,7 @@ class ImageProcessor:
         
         # Assign the detected markdown file
         self.markdown_file = markdown_files[0]
+        self.markdown_file_name = self.markdown_file.stem
         self.logger.info(f"Using Markdown file: {self.markdown_file}")
 
     def process_images(self) -> None:
@@ -69,22 +76,50 @@ class ImageProcessor:
             Dict[str, str]: Processed results.
         """
         if not self.is_logo_image(image_path):
-            image_path = self.move_image_to_pics_folder(image_path)
-            responses = self.extract_information_multiple_times(image_path)
-            best_response_index = self.determine_best_response(responses, image_path)
-            best_response = responses[best_response_index - 1]
-            translated_response = self.translate_response_to_original_language(best_response, image_path)
+            new_image_path = self.move_image_to_pics_folder(image_path)
+            self.logger.info(f"Operating in QA {self.qa_evaluator} mode")
+            if self.qa_evaluator:
+                responses = self.extract_information_multiple_times(new_image_path, max_responses=3)
+                best_response_index = self.determine_best_response(responses, new_image_path)
+                best_response = responses[best_response_index - 1]
+            else:
+                responses = self.extract_information_multiple_times(new_image_path, max_responses=1)
+                best_response = responses[0]
+            if self.translator:
+                translated_response = self.translate_response_to_original_language(best_response, new_image_path)
+            else:
+                translated_response = best_response
         else:
             self.logger.info(f"The image {image_path.name} is classified as a company logo. No further processing required.")
-            return self.create_result(image_path, is_logo=True, contains_info=False, extracted_info="N/A")
+            return self.create_result(old_image_path=image_path, new_image_path=image_path, is_logo=True, contains_info=False, extracted_info="N/A")
 
-        return self.create_result(image_path, is_logo=False, contains_info=True, extracted_info=translated_response)
+        return self.create_result(old_image_path=image_path, new_image_path=new_image_path, is_logo=False, contains_info=True, extracted_info=translated_response)
 
     # Logo Classifier Agent
     def is_logo_image(self, img_path: str) -> bool:
-        instruction_set = "You are an image classifier specialized in determining whether an image is a logo or not. Classify it as logo if it doesn't contain any important info or contains just few text."
+
+        instruction_set = """
+        You are an image classifier specialized in determining whether an image is a logo or not.
+
+        1. Classify the image as a logo only if it primarily contains:
+        - Symbols, icons, or graphical elements with minimal or no text.
+        - Simple text combined with symbols or icons, where the focus remains on the graphical element.
+        - Simple text regarding the page number or just few words
+        - Simple text such as company name or footer notes
+        
+        2. Do NOT classify the image as a logo if it contains:
+        - Detailed information like paragraphs, long text, or multiple lines of text.
+        - Complex visual elements such as tables, flowcharts, infographics, or diagrams.
+        - Multiple distinct components indicating it is a document or a visual representation of data.
+
+        3. If unsure, classify the image as not a logo to minimize false positives.
+        """
 
         prompt = "Please classify the image as a logo or not."
+        prompt += "\nEnsure the following criteria are met for classification:"
+        prompt += "\n- Classify as a logo only if the image primarily contains logos."
+        prompt += "\n- If the image contains detailed content like paragraphs, tables, diagrams, or flowcharts, classify it as not a logo."
+        prompt += "\n- If unsure, classify the image as not a logo."
         prompt += "\nRespond in JSON format as follows:\n"
         prompt += "{ 'is_logo': True or False }"
 
@@ -94,7 +129,6 @@ class ImageProcessor:
 
         llm_role = "Logo Classifier"
         response_key = "is_logo"
-
         llm_schema = logo_agent_schema.model_json_schema()
 
         return self.retry_ollama_vision_agent(instruction_set, prompt, llm_role, response_key, img_path, llm_schema)
@@ -139,6 +173,9 @@ class ImageProcessor:
         ### Detected Elements
         - Elements: [List only found elements: Text, Table, Graph, Flowchart]
         - Language: [Primary language detected]
+        
+        ### Overview
+        [Brief summary of the image content]
 
         ### Text Content
         {Include only if text is present}
@@ -197,13 +234,6 @@ class ImageProcessor:
         - Do not attempt to reconstruct unclear elements
 
         Remember: Accuracy and precision are paramount. Output only what you can see with absolute certainty.
-        
-        Output Format (strictly):
-        {
-            "Detected Elements": "[List only found elements: Text, Table, Graph, Flowchart]",
-            "Language": "[Primary language detected]",
-            "Text Content": "[Direct transcription of visible text, preserving formatting]",
-        }
 
         """
 
@@ -228,7 +258,7 @@ class ImageProcessor:
         results = []
     
         for response_index in range(max_responses):  # Collect 3 responses
-            logging.info(f"Extracting information from image: {img_path} (Collection {response_index + 1})")
+            self.logger.info(f"Extracting information from image: {img_path} (Collection {response_index + 1})")
             result = self.retry_ollama_vision_agent(instruction_set, prompt, llm_role, response_key, img_path, llm_schema)
             results.append(result)
         
@@ -249,15 +279,33 @@ class ImageProcessor:
 
         concatenated_responses = "\n\n".join([f"Response {i+1}:\n{resp}" for i, resp in enumerate(responses)])
 
-        instruction_set = (
-            "You are a QA evaluator. I have three responses for the same task, and your job is to determine which one is the best. "
-            "The responses might vary slightly, but you must select the most complete and accurate one based on the content extracted from the image. "
-        )
+        instruction_set = """
+        You are a QA evaluator specializing in selecting the best response that accurately and comprehensively explains the content of an image.
 
-        prompt = "Please select the best response from the three provided."
-        prompt += f"\n\n{concatenated_responses}"
+        You will be provided with three responses for the same task. Your job is to select the response that provides:
+        1. The most detailed and accurate explanation of the information for the content type present in the image.
+        2. A complete description of the key elements, structure, and relationships in the image, especially for content types such as flowcharts, diagrams, or complex visuals.
+
+        Evaluation Criteria:
+        - Prioritize responses that thoroughly explain the content, covering all key elements, even if they are longer.
+        - Ensure the selected response provides clear and structured information, including details about the relationships or flow if applicable (e.g., in flowcharts, tables, or graphs).
+        - Avoid selecting responses that are too brief or omit key parts of the content.
+
+        Tie-Breaker Rule:
+        - If two or more responses seem equally good, choose the one that offers slightly more clarity, organization, or critical detail.
+
+        """
+
+        prompt = "Please select the best response from the three responses provided. Each response is labeled with a response index (1, 2, or 3)."
+        prompt += "\n\nHere are the responses:\n"
+
+        # Example of how to concatenate responses with indices
+        for idx, response in enumerate(responses, 1):
+            prompt += f"Response Index {idx} : \n {response}\n\n"
+
         prompt += "\nRespond in JSON format as follows:\n"
         prompt += "{ 'best_response': 1 or 2 or 3 }"
+
 
         # Define the schema for the response
         class qa_evaluator_schema(BaseModel):
@@ -305,23 +353,22 @@ class ImageProcessor:
         with open(self.markdown_file, "r", encoding="utf-8") as md_file:
             content = md_file.read()
 
+        self.logger.info(f"Read Markdown content")
+
         for result in self.results:
             if result["contains_info"]:
                 # Add extracted info as a comment below the image reference in Markdown
-                image_ref = f"![{result['image']}]({result['image']})"
+                base_path = Path.cwd()
+                relative_path = os.path.relpath(result['new_image_path'], start=base_path)
+                image_ref = f"![]({result['image']})"
                 extracted_info = result['extracted_info']
-                if extracted_info.find("**Entnommene Informationen**") != -1:
-                    extracted_info = extracted_info.split("**Entnommene Informationen**")[1].strip()
-                elif extracted_info.find("**Extracted Information**") != -1:
-                    extracted_info = extracted_info.split("**Extracted Information**")[1].strip()
-                else:
-                    extracted_info = extracted_info
-                extracted_info_comment = f"\n ## Extracted Info of {result['image_path']}: \n{extracted_info}"
-                content = content.replace(image_ref, extracted_info_comment)
+                updated_extracted_info = f"[![Extracted Image]({relative_path})]({relative_path}) \n {extracted_info}"
+                content = content.replace(image_ref, updated_extracted_info)
             else:
-                image_ref = f"![{result['image']}]({result['image']})"
+                image_ref = f"![]({result['image']})"
                 content = content.replace(image_ref, "")
 
+        self.logger.info(f"Updated Markdown content")
         # Save the updated file in the parent folder
         updt_file_path = self.folder_path.parent / f"{self.markdown_file.name}"
         with open(updt_file_path, "w", encoding="utf-8") as md_file:
@@ -340,12 +387,13 @@ class ImageProcessor:
         self.logger.info("Summary of Results:")
         for result in self.results:
             self.logger.info(f"Image: {result['image']}")
-            self.logger.info(f"Image Path: {result['image_path']}")
+            self.logger.info(f"Old Image Path: {result['old_image_path']}")
+            self.logger.info(f"New Image Path: {result['new_image_path']}")
             self.logger.info(f"  - Is Logo: {result['is_logo']}")
             self.logger.info(f"  - Contains Info: {result['contains_info']}")
             self.logger.info(f"  - Extracted Info: {result['extracted_info']}")
 
-    def move_image_to_pics_folder(self, image_path: Path) -> Path:
+    def move_image_to_pics_folder(self, image_path: Path, with_timestamp: bool = False) -> Path:
         """
         Moves the image to the 'pics' folder and returns the new image path.
 
@@ -361,17 +409,22 @@ class ImageProcessor:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         unique_id = uuid.uuid4().hex[:8]
 
-        new_image_path = pics_folder / f"{image_path.stem}_{timestamp}_{unique_id}{image_path.suffix}"
+        if with_timestamp:
+            new_image_path = pics_folder / f"{self.markdown_file_name}{image_path.stem}_{timestamp}_{unique_id}{image_path.suffix}"
+        else:
+            new_image_path = pics_folder / f"{self.markdown_file_name}{image_path.stem}{image_path.suffix}"
+
         move(str(image_path), str(new_image_path))
 
         return new_image_path
 
-    def create_result(self, image_path: Path, is_logo: bool, contains_info: bool, extracted_info: str) -> Dict[str, str]:
+    def create_result(self, old_image_path: Path, new_image_path: Path, is_logo: bool, contains_info: bool, extracted_info: str) -> Dict[str, str]:
         """
         Creates a result dictionary for the processed image.
 
         Args:
-            image_path (Path): Path to the image file.
+            old_image_path (Path): Path to the old image file.
+            new_image_path (Path): Path to the new image file.
             is_logo (bool): Whether the image is a logo.
             contains_info (bool): Whether the image contains information.
             extracted_info (str): Extracted information from the image.
@@ -380,8 +433,9 @@ class ImageProcessor:
             Dict[str, str]: Result dictionary.
         """
         return {
-            "image": image_path.name,
-            "image_path": str(image_path),
+            "image": old_image_path.name,
+            "old_image_path": str(old_image_path),
+            "new_image_path": str(new_image_path),
             "is_logo": is_logo,
             "contains_info": contains_info,
             "extracted_info": extracted_info
@@ -416,8 +470,8 @@ class ImageProcessor:
                 }
             ],
             format='json',
+            options={'temperature': 0.7}
         )
-        print(response["message"]["content"])
         return response['message']['content']
     
     
@@ -444,6 +498,7 @@ class ImageProcessor:
                 if response_key in response_json:
                     if valid_values:
                         if response_json[response_key] in valid_values:
+                            self.logger.info(f"Agent {llm_role} : Response: {response_json[response_key]}")
                             return response_json[response_key]
                         else:
                             raise ValueError(f"Agent {llm_role} : Invalid response value: {response_json[response_key]}")
@@ -474,6 +529,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Process images and query the Ollama model.")
     parser.add_argument("folder", type=str, help="Path to the folder containing images.")
     parser.add_argument("--model", type=str, default='llama3.2-vision', help="Ollama model to query.")
+    
     args = parser.parse_args()
 
     logging.basicConfig(
