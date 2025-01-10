@@ -1,4 +1,6 @@
-# ![LlaMarker Logo](llamarker/assets/Llamarker_logo.png) LlaMarker
+# ![LlaMarker Logo](llamarker/assets/Llamarker_logo.png)
+
+# Llamarker
 
 **LlaMarker** is a comprehensive Python package designed for universal parsing and document conversion. It provides end-to-end capabilities for converting files into PDFs, extracting text and structured content (including images, tables, graphs, and flowcharts), and converting these into clean Markdown files. Its primary focus is on maintaining accuracy and supporting multilingual content.
 
