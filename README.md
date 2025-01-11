@@ -1,4 +1,6 @@
-# <p align="center"><img src="llamarker/assets/Llamarker_logo.png" alt="LlaMarker Logo" width="200"></p>
+<p align="center" style="margin: 0; padding: 0;">
+  <img src="llamarker/assets/Llamarker_logo.png" alt="LlaMarker Logo" width="200">
+</p>
 
 <h1 align="center">🖍️ LlaMarker</h1>
 
@@ -255,6 +257,8 @@ Contributions are welcome! Feel free to open an issue or submit a pull request. 
 ## License
 
 This project references the [Marker](https://github.com/VikParuchuri/marker) repository, which comes with its own license. Please review the Marker repo for licensing restrictions and guidelines.
+
+© <2025> <Revan Kumar Dhanasekaran>. Released under the GPLv3 License.
 
 ---
 
