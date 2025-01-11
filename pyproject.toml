@@ -1,9 +1,13 @@
 [tool.poetry]
-name = "LlaMarker"
+name = "llamarker"
 version = "1.0.0"
-description = "A universal GenAI based local parser for complex documents of all types"
-authors = ["Revan Kumar Dhanasekaran (revan.dhana@gmail.com)"]
+description = "A universal GenAI-based local parser for complex documents of all types."
+authors = ["Revan Kumar Dhanasekaran <revan.dhana@gmail.com>"]
 readme = "README.md"
+license = "GPL-3.0-or-later"
+homepage = "https://github.com/RevanKumarD/LlaMarker"
+repository = "https://github.com/RevanKumarD/LlaMarker"
+keywords = ["markdown", "document parsing", "llama", "AI", "local parser", "genai"]
 
 [tool.poetry.dependencies]
 python = ">=3.10 <4.0"
@@ -17,6 +21,9 @@ matplotlib = "<3.10.0"
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.4"
 
+[tool.poetry.scripts]
+llamarker = "llamarker.main:main"  # Replace llamarker.main with the actual module and function name
+
 [build-system]
-requires = ["setuptools>=42"]
-build-backend = "setuptools.build_meta"
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
