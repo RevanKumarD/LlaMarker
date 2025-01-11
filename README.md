@@ -9,7 +9,7 @@
 
 <div align="center">
   
-[![Python Versions](https://img.shields.io/badge/Python-3.8%2B-blue.svg)](https://www.python.org/downloads/release/python-380/)
+[![Python Versions](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/downloads/release/python-380/)
 [![License](https://img.shields.io/badge/License-Refer%20Marker%20Repo-lightgrey.svg)](https://github.com/VikParuchuri/marker)
 
 </div>
@@ -89,7 +89,7 @@
 ## Installation
 
 ### Requirements
-1. **Python 3.8+**  
+1. **Python 3.10+**  
 2. **[Marker](https://github.com/VikParuchuri/marker)** installed locally or available in your `PATH`.
 3. **LibreOffice** (for document conversion; optional if you only want to parse existing PDFs).
 
