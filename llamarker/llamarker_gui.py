@@ -53,13 +53,13 @@ if "files_parsed" not in ss:
 # Set up the page configuration for Streamlit
 st.set_page_config(
     page_title="LlaMarker",
-    page_icon="🖍",
+    page_icon="🖍️",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
 # Header for the main application
-st.header("🖍 LlaMarker: Seamless Local Document Parser")
+st.header("🖍️ LlaMarker: Seamless Local Document Parser")
 
 # Introduction section with key features of the app
 st.write(
