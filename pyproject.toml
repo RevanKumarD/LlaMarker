@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "LlaMarker"
-version = "0.1.0"
+version = "1.0.0"
 description = "A universal GenAI based local parser for complex documents of all types"
 authors = ["Revan Kumar Dhanasekaran (revan.dhana@gmail.com)"]
 readme = "README.md"
@@ -16,14 +16,9 @@ langchain-community = "^0.3.13"
 langchain-ollama = "^0.2.2"
 pydantic = "^2.10.4"
 matplotlib = "<3.10.0"
-transformers = "^4.47.1"
-opencv-python = "^4.10.0.84"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.4"
-
-[tool.poetry.scripts]
-post_install_marker = "llamarker.utils.post_install:install_marker"
 
 [build-system]
 requires = ["setuptools>=42"]

@@ -26,7 +26,7 @@ def encode_image_to_base64(image_path: str) -> str:
 
 
 # Encode and store the logo image for display in the sidebar
-encoded_logo = encode_image_to_base64("assets/Llamarker_logo.png")
+encoded_logo = encode_image_to_base64("llamarker/assets/Llamarker_logo.png")
 
 # Define paths for GUI output
 cwd = os.getcwd()
