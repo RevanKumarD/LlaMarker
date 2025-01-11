@@ -34,7 +34,7 @@ gui_out = f"{cwd}/OutDir"
 parsed_pdf_folder = f"{gui_out}/PDFs"
 parsed_markdown_folder = f"{gui_out}/ParsedFiles"
 
-container_height = "500px"
+container_height = "700px"
 
 # Ensure output directory exists
 if not os.path.exists(gui_out):
@@ -250,9 +250,9 @@ if ss.uploaded_item:
             
             with st.spinner("Displaying selected file..."):
                 pdf_file = Path(parsed_pdf_folder) / Path(ss.selected_file).with_suffix(".pdf").name
-                col1_, col2_, col3_ = st.columns([5,5,2], gap='large', vertical_alignment="top")
+                col1_, col2_, col3_ = st.columns([5,5,2], gap='large', vertical_alignment="center")
                 with col1_:
-                    st.markdown("##### Uploaded File")
+                    st.markdown("### Uploaded File")
                 with col3_:
                     # Button to reset the app for a new upload
                     if st.button("X"):
@@ -276,23 +276,48 @@ if ss.uploaded_item:
 
         with parsed_file_col:
             with st.spinner("Displaying parsed file..."):
-                md_file = Path(parsed_markdown_folder) / Path(ss.selected_file).with_suffix(".md").name
-                st.markdown("##### Parsed Content")
+                md_file_path = Path(parsed_markdown_folder) / Path(ss.selected_file).with_suffix(".md").name
+                
+                col1_, col2_, col3_ = st.columns([5,3,5], gap='large', vertical_alignment="center")
+                with col1_:
+                    st.markdown("### Parsed Content")
+                with col3_:
+                    # Add a toggle switch for raw or rendered view
+                    show_raw = st.toggle("Show Raw Markdown")
+                    
                 st.divider()
-                if md_file.exists():
-                    with open(md_file, "r") as md_file:
+                if md_file_path.exists():
+                    
+                    with open(md_file_path, "r") as md_file:
                         md_content = md_file.read()
-                    st.markdown(
-                        f"""
-                        <div style="overflow-y: scroll; height: {container_height}; border: 1px solid #ccc; padding: 10px;">
-                            {html.escape(md_content)}
-                        </div>
-                        """,
-                        unsafe_allow_html=True,
+                    
+                    if show_raw:
+                        # Show raw markdown content in a text area
+                        st.text_area("Raw Markdown Content", md_content, height=650)
+                    else:
+                        # Show rendered markdown content in a scrollable container
+                        st.markdown(
+                            f"""
+                            <div style="overflow-y: scroll; height: {container_height}; border: 1px solid #ccc; padding: 10px;">
+                                {html.escape(md_content)}
+                            </div>
+                            """,
+                            unsafe_allow_html=True,
+                        )
+                    
+                    st.markdown("<br>", unsafe_allow_html=True)
+                    
+                    # Add a download button for the markdown content
+                    st.download_button(
+                        label="Download Markdown File",
+                        data=md_content,
+                        file_name=os.path.basename(md_file_path),
+                        mime="text/markdown",
+                        icon=":material/download:"
                     )
 
                 else:
-                    st.error(f"Parsed File Not Found : {md_file}", icon="🚨")
+                    st.error(f"Parsed File Not Found : {md_file_path}", icon="🚨")
                     
         # Sidebar for displaying analysis plot
         with st.sidebar:
