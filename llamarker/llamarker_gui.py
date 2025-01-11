@@ -41,15 +41,24 @@ if not os.path.exists(gui_out):
     os.makedirs(gui_out)
 
 # Initialize session state variables for tracking upload and processing
-if "uploaded_item" not in ss:
-    ss.uploaded_item = False
-
-if "uploaded_file" not in ss:
-    ss.uploaded_file = None
+if "uploaded_files" not in ss:
+    ss.uploaded_files = []
+    
+if "uploaded_file_list" not in ss:
+    ss.uploaded_file_list = []
 
 if "files_parsed" not in ss:
     ss.files_parsed = False
 
+if "processing_time" not in ss:
+    ss.processing_time = 0
+    
+if "clicked_parse_button" not in ss:
+    ss.clicked_parse_button = False
+    
+if "clicked_upload_button" not in ss:
+    ss.clicked_upload_button = True
+    
 # Set up the page configuration for Streamlit
 st.set_page_config(
     page_title="LlaMarker",
@@ -77,7 +86,7 @@ st.write(
 )
 
 # Display key features if no file has been uploaded
-if not ss.uploaded_item:
+if not ss.clicked_parse_button and ss.clicked_upload_button:
     st.write(
         """
         <style>
@@ -122,9 +131,11 @@ st.sidebar.markdown(
     unsafe_allow_html=True,
 )
 
-if not ss.files_parsed:
+# Sidebar section for displaying the app settings
+if not ss.files_parsed and not ss.clicked_parse_button and ss.clicked_upload_button:
+    st.sidebar.header("⚙️ Settings")
     # Marker settings
-    st.sidebar.subheader("Marker Settings")
+    st.sidebar.subheader("🖍️ Marker", divider=True)
     force_ocr = st.sidebar.toggle("Force OCR", help="Enable this to force OCR processing even if text is extractable.")
     selected_languages = st.sidebar.multiselect(
         "OCR Languages",
@@ -134,7 +145,7 @@ if not ss.files_parsed:
     )
 
     # Image processing settings
-    st.sidebar.subheader("Image Processing Settings")
+    st.sidebar.subheader("📷 Image Processing", divider=True)
     qa_evaluator_flag = st.sidebar.toggle("Enable QA Evaluator", value=True, help="Enable or disable the QA evaluator for selecting the best response.")
 
     # Fetch and display available models from Ollama
@@ -150,13 +161,21 @@ if not ss.files_parsed:
 
     except Exception as e:
         st.sidebar.error(f"Error listing models: {e}")
-        
-
-    # Save selected settings to session state
-    ss.selected_model = selected_model
-    ss.force_ocr = force_ocr
-    ss.selected_languages = selected_languages
-    ss.qa_evaluator_flag = qa_evaluator_flag
+    
+    st.sidebar.markdown("<br>", unsafe_allow_html=True)
+    
+    # Parse button to start processing
+    if st.sidebar.button("Parse Files", type="primary", icon=":material/rebase_edit:"):
+        if not ss.uploaded_files:
+            st.warning("Please upload at least one file before clicking Parse.")
+        else:
+            ss.force_ocr = force_ocr
+            ss.selected_languages = selected_languages
+            ss.qa_evaluator_flag = qa_evaluator_flag
+            ss.selected_model = selected_model
+            ss.clicked_parse_button = True
+            ss.clicked_upload_button = False
+            st.rerun()
 
 # Styling for the file upload container
 st.markdown(
@@ -179,37 +198,41 @@ st.markdown(
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# Layout for file uploader section
-col1, col2, col3 = st.columns([1, 5, 1], gap="large")
+if ss.clicked_upload_button:
+    # Layout for file uploader section
+    col1, col2, col3 = st.columns([1, 5, 1], gap="large")
 
-with col2:
-    if not ss.uploaded_item:
-        uploaded_file = st.file_uploader("Upload a document or folder", type=["docx", "txt", "pdf", "rtf", "odt", "xls", "xlsx", "csv", "ods", "ppt", "pptx", "odp", "zip"])
-        st.info("Supported formats: .docx, .txt, .pdf, .rtf, .odt, .xls, .xlsx, .csv, .ods, .ppt, .pptx, .odp")
-        if uploaded_file:
-            ss.uploaded_item = True
-            ss.uploaded_file = uploaded_file
-            st.rerun()
+    with col2:
+        
+        uploaded_files = st.file_uploader(
+            "Upload documents (multiple files supported)",
+            type=["docx", "txt", "pdf", "rtf", "odt", "xls", "xlsx", "csv", "ods", "ppt", "pptx", "odp", "zip"],
+            accept_multiple_files=True,
+        )
+
+        if uploaded_files:
+            ss.uploaded_files = uploaded_files
 
 # Main logic for processing uploaded files
-if ss.uploaded_item:
+if ss.clicked_parse_button:
     start_time = time.time()  # Start the timer to measure processing time
 
     if not ss.files_parsed:
         with tempfile.TemporaryDirectory() as upload_folder:
             # Save uploaded file to a temporary folder
-            file_path = Path(upload_folder) / ss.uploaded_file.name
-            with open(file_path, "wb") as f:
-                f.write(ss.uploaded_file.getbuffer())
+            for uploaded_file in ss.uploaded_files:
+                file_path = Path(upload_folder) / uploaded_file.name
+                with open(file_path, "wb") as f:
+                    f.write(uploaded_file.getbuffer())
 
-            # If the uploaded file is a ZIP, unpack it
-            if file_path.suffix == ".zip":
-                shutil.unpack_archive(file_path, upload_folder)
-                ss.uploaded_file_list = [
-                    str(p) for p in Path(upload_folder).rglob("*") if p.suffix in [".pdf", ".txt", ".docx"]
-                ]
-            else:
-                ss.uploaded_file_list = [str(file_path)]
+                # If a ZIP file is uploaded, unpack it
+                if file_path.suffix == ".zip":
+                    shutil.unpack_archive(file_path, upload_folder)
+                    for p in Path(upload_folder).rglob("*"):
+                        if p.suffix in [".docx", ".txt", ".pdf", ".rtf", ".odt", ".xls", ".xlsx", ".csv", ".ods", ".ppt", ".pptx", ".odp"]:
+                            ss.uploaded_file_list.append(str(p))
+                else:
+                    ss.uploaded_file_list.append(str(file_path))
 
             # Initialize LlaMarker and process the documents
             llamarker = LlaMarker(input_dir=upload_folder, output_dir=gui_out, save_pdfs=True, verbose=1)
@@ -217,7 +240,7 @@ if ss.uploaded_item:
                 llamarker.process_documents()
             with st.spinner("Parsing using Marker OCR ..."):
                 llamarker.parse_with_marker(force_ocr=ss.force_ocr, languages=",".join(ss.selected_languages))
-            with st.spinner("Extracting necessary info from images using Llama3.2-Vision ..."):
+            with st.spinner(f"Extracting necessary info from images using {ss.selected_model} ..."):
                 llamarker.process_subdirectories(model=ss.selected_model, qa_evaluator=ss.qa_evaluator_flag)
                 llamarker.plot_analysis(parsed_markdown_folder)
 
@@ -256,11 +279,11 @@ if ss.uploaded_item:
                 with col3_:
                     # Button to reset the app for a new upload
                     if st.button("X"):
-                        ss.uploaded_item = False
-                        ss.uploaded_file = None
                         ss.uploaded_file_list = []
                         ss.selected_file = None
                         ss.files_parsed = False
+                        ss.clicked_parse_button = False
+                        ss.clicked_upload_button = True
                         ss.processing_time = 0
                         st.rerun()
                 st.divider()
@@ -326,10 +349,10 @@ if ss.uploaded_item:
                 st.image(Path(parsed_markdown_folder) / "page_counts.png")
 
             if st.button("Upload New", type="primary", icon=":material/upload:"):
-                ss.uploaded_item = False
-                ss.uploaded_file = None
                 ss.uploaded_file_list = []
                 ss.selected_file = None
                 ss.files_parsed = False
+                ss.clicked_parse_button = False
+                ss.clicked_upload_button = True
                 ss.processing_time = 0
                 st.rerun()
