@@ -246,6 +246,8 @@ poetry run python llamarker/llamarker.py --directory <directory_path> [options]
 
 ### Example Commands
 
+{ Again this for local developement. }
+
 1. **Processing a directory**
 
    ```bash
@@ -272,6 +274,8 @@ poetry run python llamarker/llamarker.py --directory <directory_path> [options]
 ---
 
 ### Running the Streamlit GUI
+
+{Comment: The below is for local development and testing. For general users all they need to do is just run llamarker_gui in the terminal.}
 
 LlaMarker also comes with a **Streamlit**-based graphical user interface, making it simpler to:
 

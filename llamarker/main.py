@@ -18,12 +18,20 @@ class LlaMarker:
 
     def __init__(self, input_dir: str = None, file_path: str = None, temp_dir: str = None, save_pdfs: bool = False, output_dir: str = None, logger: logging.Logger = None, marker_path: str = None, verbose: int = 0):
         """
-        Initialize LlaMarker with a root directory for processing.
-
+        Initialize the LlaMarker instance with input parameters.
+        
         Args:
-            input_dir (str): Path to the input directory with files.
-            file_path (str): Path to a single file to process.
+            input_dir (str): Specifies the directory containing files to be processed.
+            file_path (str): Specifies the path of a single file to be processed.
+            temp_dir (str): Path to the temporary directory for intermediate files.
+            save_pdfs (bool): Flag to save PDFs in a separate directory.
+            output_dir (str): Path to save the output files.
             logger (logging.Logger): Logger instance for logging progress.
+            marker_path (str): Path to the Marker executable.
+            verbose (int): Verbosity level for logging (0: WARNING, 1: INFO, 2: DEBUG). Defaults to 0.
+            
+        Raises:
+            FileNotFoundError: If the 'marker' executable is not found in the system PATH.        
         """
         self.input_dir = Path(input_dir) if input_dir else None
         self.file_path = Path(file_path) if file_path else None
