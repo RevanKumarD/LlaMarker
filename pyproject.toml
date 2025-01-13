@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "llamarker"
-version = "1.0.0"
+version = "1.0.1"
 description = "A universal GenAI-based local parser for complex documents of all types."
 authors = ["Revan Kumar Dhanasekaran <revan.dhana@gmail.com>"]
 readme = "README.md"
@@ -8,6 +8,10 @@ license = "GPL-3.0-or-later"
 homepage = "https://github.com/RevanKumarD/LlaMarker"
 repository = "https://github.com/RevanKumarD/LlaMarker"
 keywords = ["markdown", "document parsing", "llama", "AI", "local parser", "genai"]
+packages = [{include = "llamarker"}]
+
+# Correct include directive for non-Python files
+include = ["llamarker/assets/*"]
 
 [tool.poetry.dependencies]
 python = ">=3.10 <4.0"
@@ -23,6 +27,7 @@ pytest = "^8.3.4"
 
 [tool.poetry.scripts]
 llamarker = "llamarker.main:main"  # Replace llamarker.main with the actual module and function name
+llamarker_gui = "llamarker.gui_runner:main"      # For the Streamlit GUI
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

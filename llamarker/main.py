@@ -4,8 +4,8 @@ from pathlib import Path
 from typing import List, Tuple, Optional
 import matplotlib.pyplot as plt
 from datetime import datetime
-from file_to_pdf_converter import FileToPDFConverter
-from img_processor import ImageProcessor
+from llamarker.file_to_pdf_converter import FileToPDFConverter
+from llamarker.img_processor import ImageProcessor
 import subprocess
 import tempfile
 import shutil
