@@ -342,6 +342,38 @@ llamarker.plot_analysis(llamarker.parent_dir)
 
 ---
 
+## 🚧 Shortcomings & Future Updates
+
+### Current Shortcomings:
+
+1. **Limited OCR Accuracy for Complex Documents**  
+   - While OCR works well for most cases, it may struggle with highly complex layouts or poorly scanned documents.
+2. **No Direct Cloud Integration**  
+   - Currently, LlaMarker only supports local processing. There’s no option to process files directly from cloud storage services like Google Drive or Dropbox.
+3. **Basic Support for PPT and XLSX Parsing**  
+   - Parsing of **PPT** and **XLSX** files is available but lacks advanced formatting support (e.g., slide layouts, complex charts).
+4. **Poor XLSX to PDF Conversion**  
+   - The current conversion of **XLSX** files to **PDF** results in poorly formatted output. Improvements are needed to handle large spreadsheets and complex tables.
+5. **Manual Setup for Marker and LibreOffice**  
+   - Users must manually install **Marker** and **LibreOffice**, which can be cumbersome for those unfamiliar with the setup process.
+
+---
+
+### Planned Future Updates:
+
+1. **Enhanced OCR Capabilities**  
+   - Improve OCR performance by integrating additional vision models for better handling of complex document layouts and multi-column formats.
+2. **Cloud Storage Integration**  
+   - Add support for uploading documents directly from cloud services (Google Drive, Dropbox, OneDrive).
+3. **Improved PPT & XLSX Handling**  
+   - Enhance parsing accuracy for **PPT** and **XLSX** files by adding better support for slides, tables, and embedded charts.
+4. **Better XLSX to PDF Conversion**  
+   - Improve the **XLSX to PDF** conversion process to handle large sheets, complex tables, and maintain proper formatting.
+5. **Cross-Platform Installation Script**  
+   - Provide an easy-to-use installation script for all platforms (Linux, Windows, macOS) to automate the setup of dependencies like **Marker** and **LibreOffice**.
+
+---
+
 ## Contributing
 
 Contributions are welcome! Feel free to open an issue or submit a pull request. Let’s make **LlaMarker** even more powerful—together. 🤝
