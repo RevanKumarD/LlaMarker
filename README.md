@@ -10,14 +10,28 @@
 </p>
 
 <div align="center">
-  
-[![Python Versions](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/downloads/release/python-380/)
-[![License](https://img.shields.io/badge/License-Refer%20Marker%20Repo-lightgrey.svg)](https://github.com/VikParuchuri/marker)
-[![PyPI version](https://img.shields.io/pypi/v/llamarker)](https://pypi.org/project/llamarker/)
-
+  <span>
+    <a href="https://www.python.org/downloads/release/python-380/">
+      <img src="https://img.shields.io/badge/Python-3.10%2B-blue.svg" alt="Python Versions">
+    </a>
+  </span>
+  <span>
+    <a href="https://github.com/VikParuchuri/marker">
+      <img src="https://img.shields.io/badge/License-Refer%20Marker%20Repo-lightgrey.svg" alt="License">
+    </a>
+  </span>
+  <span>
+    <a href="https://pypi.org/project/llamarker/">
+      <img src="https://img.shields.io/pypi/v/llamarker" alt="PyPI version">
+    </a>
+  </span>
 </div>
 
----
+
+<p align="center">
+  <img src="llamarker/assets/llamarker_demo.gif" alt="LlaMarker Demo" width="1200">
+</p>
+
 
 ## ✨ Key Features
 
