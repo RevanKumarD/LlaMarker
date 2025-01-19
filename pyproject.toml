@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "llamarker"
-version = "1.0.1"
+version = "1.0.2"
 description = "A universal GenAI-based local parser for complex documents of all types."
 authors = ["Revan Kumar Dhanasekaran <revan.dhana@gmail.com>"]
 readme = "README.md"

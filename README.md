@@ -132,14 +132,22 @@ Before installing or running **LlaMarker**, please ensure you meet the following
 2. **Marker**
 
    - [Marker](https://github.com/VikParuchuri/marker) is an open-source parser that **LlaMarker** extends.
-   - For a quick install, you can try:
-     ```bash
-     pip install marker-pdf
-     ```
-     This installs Marker’s **PDF** parsing capabilities.
-   - If you plan to leverage GPUs, ensure **PyTorch** is installed with **CUDA** support (e.g., via `pytorch-cuda` or the official PyTorch distribution).
-   - For advanced installation or customization, refer to the [official Marker GitHub repository](https://github.com/VikParuchuri/marker) for detailed instructions on cloning and building from source.
-   - If installed, ensure Marker is in your `PATH` or specify its location with the `--marker_path` argument.
+   - To install Marker, follow these steps:
+     1. Clone the repository:
+        ```bash
+        git clone https://github.com/VikParuchuri/marker.git
+        cd marker
+        ```
+     2. Install Marker in editable mode:
+        ```bash
+        pip install -e .
+        ```
+     3. Verify the installation:
+        ```bash
+        marker --help
+        ```
+   - **GPU Support**: If you plan to leverage GPUs, ensure **PyTorch** is installed with **CUDA** support (e.g., via `pytorch-cuda` or the official PyTorch distribution).
+   - **Path Configuration**: If Marker is not in your `PATH`, ensure you specify its location with the `--marker_path` argument.
 
 3. **LibreOffice**
 
