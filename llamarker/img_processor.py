@@ -17,7 +17,7 @@ class ImageProcessor:
     and extracts relevant details into a Markdown file.
     """
 
-    def __init__(self, folder_path: str, model: str = 'llama3.2-vision', logger: logging.Logger = None, translator: bool = False, qa_evaluator:bool = True):
+    def __init__(self, folder_path: str, model: str = 'llama3.2-vision', logger: logging.Logger = None, translator: bool = True, qa_evaluator:bool = True):
         """
         Initializes the ImageProcessor.
 
@@ -75,7 +75,7 @@ class ImageProcessor:
         Returns:
             Dict[str, str]: Processed results.
         """
-        if not self.is_logo_image(image_path):
+        if "Figure" in image_path.name:
             new_image_path = self.move_image_to_pics_folder(image_path)
             self.logger.info(f"Operating in QA {self.qa_evaluator} mode")
             if self.qa_evaluator:
